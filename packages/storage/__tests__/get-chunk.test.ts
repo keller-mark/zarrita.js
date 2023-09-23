@@ -67,7 +67,7 @@ describe("Comparison of zarr.js getRawChunk and zarrita.js getChunk", () => {
                     chunkCoords = [zCoord, yCoord, xCoord];
                     oldChunk = await oldArr.getRawChunk(chunkCoords);
                     newChunk = await newArr.getChunk(chunkCoords);
-                    expect(oldChunk.data).toEqual(newChunk.data);
+                    expect(Array.from(oldChunk.data)).toEqual(Array.from(newChunk.data));
                 }
             }
         }
@@ -96,28 +96,33 @@ describe("Comparison of zarr.js getRawChunk and zarrita.js getChunk", () => {
         const height = newShape[1];
         const tileSize = 256;
 
-        let x = numChunks[2] - 3;
-        let y = numChunks[1] - 1;
-        const [xStart, xStop] = [
-            x * tileSize,
-            Math.min((x + 1) * tileSize, width)
-        ];
-        const [yStart, yStop] = [
-            y * tileSize,
-            Math.min((y + 1) * tileSize, height)
-        ];
-
-        let oldSelection: any = [0, oldSlice(yStart, yStop), oldSlice(xStart, xStop)];
-        let newSelection: any = [0, slice(yStart, yStop), slice(xStart, xStop)];
-
+        let oldSelection;
+        let newSelection;
         let oldChunk;
         let newChunk;
-        // TODO: For loop over all possible selections
-        oldChunk = await oldArr.getRaw(oldSelection);
-        newChunk = await get(newArr, newSelection);
-        expect(oldChunk.data).toEqual(newChunk.data);
-        expect(oldChunk.shape).toEqual(newChunk.shape);
+        // For loop over all possible selections
+        for(let zCoord = 0; zCoord < numChunks[0]; zCoord++) {
+            for(let yCoord = 0; yCoord < numChunks[1]; yCoord++) {
+                for(let xCoord = 0; xCoord < numChunks[2]; xCoord++) {
+                    let x = xCoord;
+                    let y = yCoord;
+                    const [xStart, xStop] = [
+                        x * tileSize,
+                        Math.min((x + 1) * tileSize, width)
+                    ];
+                    const [yStart, yStop] = [
+                        y * tileSize,
+                        Math.min((y + 1) * tileSize, height)
+                    ];
 
+                    let oldSelection: any = [0, oldSlice(yStart, yStop), oldSlice(xStart, xStop)];
+                    let newSelection: any = [0, slice(yStart, yStop), slice(xStart, xStop)];
+                    oldChunk = await oldArr.getRaw(oldSelection);
+                    newChunk = await get(newArr, newSelection);
+                    expect(Array.from(oldChunk.data)).toEqual(Array.from(newChunk.data));
+                }
+            }
+        }
 
         // Next, test with null selection
         oldSelection = null;
