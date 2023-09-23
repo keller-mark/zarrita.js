@@ -5,7 +5,7 @@ import * as path from "node:path";
 import * as url from "node:url";
 
 // @ts-ignore
-import { ObjectStore, openArray } from 'zarr';
+import { ObjectStore, openArray, slice as oldSlice } from 'zarr';
 import { root, open } from '@zarrita/core';
 import { slice, get } from '@zarrita/indexing';
 import FileSystemStore from "../src/fs.js";
@@ -43,13 +43,12 @@ describe("Comparison of zarr.js getRawChunk and zarrita.js getChunk", () => {
 		vi.restoreAllMocks();
 	});
 
-	it("zarr.js getRawChunk matches zarrita.js getChunk for every image tile in resolution 1", async () => {
-
+	it("zarr.js getRawChunk matches zarrita.js getChunk for every image tile in resolution 2", async () => {
 		const newStoreRoot = root(new FileSystemStore(store_path));
-        const newArr = await open(newStoreRoot.resolve('images/region_raw_image/1'), { kind: "array" }); // Resolution 1
+        const newArr = await open(newStoreRoot.resolve('images/region_raw_image/2'), { kind: "array" }); // Resolution 2
 
         const oldStore = new ZarrJSFileSystemStore(store_path);
-        const oldArr = await openArray({ store: oldStore, mode: "r", path: 'images/region_raw_image/1' }); // Resolution 1
+        const oldArr = await openArray({ store: oldStore, mode: "r", path: 'images/region_raw_image/2' }); // Resolution 2
 
         const oldShape = oldArr.shape;
         const newShape = newArr.shape;
@@ -79,9 +78,55 @@ describe("Comparison of zarr.js getRawChunk and zarrita.js getChunk", () => {
         expect(oldChunk.shape).toEqual(newChunk.shape); // AssertionError: expected [ 256, 256 ] to deeply equal [ 1, 256, 256 ]
 	}, 50000);
 
-    it("zarr.js getRaw matches zarrita.js get for every image tile in resolution 1", async () => {
+    it("zarr.js getRaw matches zarrita.js get for every image tile in resolution 2", async () => {
+        const newStoreRoot = root(new FileSystemStore(store_path));
+        const newArr = await open(newStoreRoot.resolve('images/region_raw_image/2'), { kind: "array" }); // Resolution 2
 
-    });
+        const oldStore = new ZarrJSFileSystemStore(store_path);
+        const oldArr = await openArray({ store: oldStore, mode: "r", path: 'images/region_raw_image/2' }); // Resolution 2
+
+        const oldShape = oldArr.shape;
+        const newShape = newArr.shape;
+
+        expect(oldShape).toEqual(newShape);
+
+        const numChunks = newShape.map((d, i) => Math.ceil(d / newArr.chunks[i]));
+
+        const width = newShape[2];
+        const height = newShape[1];
+        const tileSize = 256;
+
+        let x = numChunks[2] - 3;
+        let y = numChunks[1] - 1;
+        const [xStart, xStop] = [
+            x * tileSize,
+            Math.min((x + 1) * tileSize, width)
+        ];
+        const [yStart, yStop] = [
+            y * tileSize,
+            Math.min((y + 1) * tileSize, height)
+        ];
+
+        let oldSelection: any = [0, oldSlice(yStart, yStop), oldSlice(xStart, xStop)];
+        let newSelection: any = [0, slice(yStart, yStop), slice(xStart, xStop)];
+
+        let oldChunk;
+        let newChunk;
+        // TODO: For loop over all possible selections
+        oldChunk = await oldArr.getRaw(oldSelection);
+        newChunk = await get(newArr, newSelection);
+        expect(oldChunk.data).toEqual(newChunk.data);
+        expect(oldChunk.shape).toEqual(newChunk.shape);
+
+
+        // Next, test with null selection
+        oldSelection = null;
+        newSelection = [null, null, null];
+        oldChunk = await oldArr.getRaw(oldSelection);
+        newChunk = await get(newArr, newSelection);
+        expect(oldChunk.data).toEqual(newChunk.data);
+        expect(oldChunk.shape).toEqual(newChunk.shape);
+    }, 50000);
 
 
 });
