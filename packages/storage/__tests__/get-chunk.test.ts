@@ -1,14 +1,38 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
+import * as url from "node:url";
+
 // @ts-ignore
-import { HTTPStore, openArray } from 'zarr';
+import { ObjectStore, openArray } from 'zarr';
 import { root, open } from '@zarrita/core';
 import { slice, get } from '@zarrita/indexing';
-import FetchStore from "../src/fetch.js";
+import FileSystemStore from "../src/fs.js";
 
-// `vitest --api` exposes the port 51204
-// ref: https://vitest.dev/config/#api
-let href = "http://localhost:51204/fixtures/lowerlimb.zarr";
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+const store_path = path.join(__dirname, "../../../fixtures/lowerlimb.zarr");
+
+class ZarrJSFileSystemStore extends ObjectStore {
+
+    zarritaStore: FileSystemStore;
+
+    constructor(storePath: string) {
+        super();
+        this.zarritaStore = new FileSystemStore(storePath);
+    }
+
+    async getItem(key: any) {
+        return this.zarritaStore.get(`/${key}`);
+    }
+    async containsItem(item: any): Promise<boolean> {
+        return this.zarritaStore.has(`/${item}`);
+    }
+
+    async setItem(key: any, value: any) {
+        return this.zarritaStore.set(`/${key}`, value);
+    }
+}
 
 // References:
 // - https://github.com/vitessce/vitessce/blob/1402a2d87ac564908207560d09d944c5ccbcd4c8/packages/utils/zarr-utils/src/adapter.ts#L47
@@ -20,12 +44,12 @@ describe("Comparison of zarr.js getRawChunk and zarrita.js getChunk", () => {
 	});
 
 	it("zarr.js getRawChunk matches zarrita.js getChunk for every image tile in resolution 1", async () => {
-        const oldStore = new HTTPStore(href);
-        const oldArr = await openArray({ store: oldStore, path: 'images/region_raw_image/1' }); // Resolution 1
 
-
-		const newStoreRoot = root(new FetchStore(href));
+		const newStoreRoot = root(new FileSystemStore(store_path));
         const newArr = await open(newStoreRoot.resolve('images/region_raw_image/1'), { kind: "array" }); // Resolution 1
+
+        const oldStore = new ZarrJSFileSystemStore(store_path);
+        const oldArr = await openArray({ store: oldStore, mode: "r", path: 'images/region_raw_image/1' }); // Resolution 1
 
         const oldShape = oldArr.shape;
         const newShape = newArr.shape;
@@ -53,7 +77,7 @@ describe("Comparison of zarr.js getRawChunk and zarrita.js getChunk", () => {
         oldChunk = await oldArr.getRawChunk(chunkCoords);
         newChunk = await newArr.getChunk(chunkCoords);
         expect(oldChunk.shape).toEqual(newChunk.shape); // AssertionError: expected [ 256, 256 ] to deeply equal [ 1, 256, 256 ]
-	});
+	}, 50000);
 
     it("zarr.js getRaw matches zarrita.js get for every image tile in resolution 1", async () => {
 
