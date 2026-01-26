@@ -121,6 +121,7 @@ class DecompressionStore implements AsyncReadable {
 			key.endsWith(".zgroup") ||
 			key.endsWith(".zmetadata")
 		) {
+            // TODO: modify array metadata contained within .zmetadata
 			return this.#inner_store.get(key);
 		}
 
