@@ -116,6 +116,14 @@ class DecompressionStore implements AsyncReadable {
 	}
 
 	async get(key: AbsolutePath): Promise<Uint8Array | undefined> {
+		if (
+			key.endsWith(".zattrs") ||
+			key.endsWith(".zgroup") ||
+			key.endsWith(".zmetadata")
+		) {
+			return this.#inner_store.get(key);
+		}
+
 		const prefix = get_prefix(key);
 		if (prefix !== undefined) {
 			// Is metadata file
@@ -192,6 +200,22 @@ class DecompressionStore implements AsyncReadable {
 		key: AbsolutePath,
 		range: RangeQuery,
 	): Promise<Uint8Array | undefined> {
+		if (this.#inner_store.getRange) {
+			const prefix = get_prefix(key);
+			const is_metadata =
+				prefix !== undefined ||
+				key.endsWith(".zattrs") ||
+				key.endsWith(".zgroup") ||
+				key.endsWith(".zmetadata");
+			if (!is_metadata) {
+				const meta = this.#resolve_metadata(key);
+				// If no metadata found, or no codecs to decode, valid to use range request
+				if (!meta || (await split_codecs(meta)).decode_codecs.length === 0) {
+					return this.#inner_store.getRange(key, range);
+				}
+			}
+		}
+
 		const data = await this.get(key);
 		if (!data) return undefined;
 		return range_slice(data, range);
