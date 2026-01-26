@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import FetchStore from "../src/fetch.js";
-import DecompressionStore from "../src/decompression.js";
+import { FetchStore } from "@zarrita/storage";
+import DecompressionStore from "../src/decompression-store.js";
 
 // `vitest --api` exposes the port 51204
 // ref: https://vitest.dev/config/#api

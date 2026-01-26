@@ -1,5 +1,5 @@
-import type { AbsolutePath, AsyncReadable, RangeQuery } from "./types.js";
-
+import type { AbsolutePath, AsyncReadable, RangeQuery } from "@zarrita/storage";
+import { create_codec_pipeline } from "./codecs.js";
 
 
 /**
@@ -29,6 +29,8 @@ class DecompressionStore implements AsyncReadable {
         // For `.zarray` and `zarr.json` metadata requests,
         // return modified metadata to indicate that the data is being returned without compression,
         // so it does not need to be decompressed again.
+        // References:
+        // - `packages/zarrita/src/codecs.ts`
         return this.#inner_store.get(key);
     }
 

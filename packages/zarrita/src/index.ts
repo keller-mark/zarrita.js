@@ -32,3 +32,4 @@ export {
 	UnicodeStringArray,
 } from "./typedarray.js";
 export { get_strides as _zarrita_internal_get_strides } from "./util.js";
+export { default as DecompressionStore } from "./decompression-store.js";
